@@ -9,23 +9,48 @@ function Vegetable() {
   const [vegetable, setVegetable] = useState([]);
 
   useEffect(() => {
+    console.log("API KEY:", process.env.REACT_APP_API_KEY);
+
     getVegetable();
   }, []);
 
   const getVegetable = async () => {
-    const check = localStorage.getItem("vegetable");
+    try {
+      const check = localStorage.getItem("vegetable");
 
-    if (check) {
-      setVegetable(JSON.parse(check));
-    } else {
+      // FIX: validasi localStorage
+      if (check && check !== "undefined" && check !== "null") {
+        try {
+          const parsed = JSON.parse(check);
+
+          if (Array.isArray(parsed)) {
+            setVegetable(parsed);
+            return;
+          }
+        } catch (err) {
+          console.log("localStorage corrupted, clearing...");
+          localStorage.removeItem("vegetable");
+        }
+      }
+
+      // Fetch dari API jika cache tidak valid
       const api = await fetch(
         `https://api.spoonacular.com/recipes/random?apiKey=${process.env.REACT_APP_API_KEY}&number=9&tags=vegetarian`,
       );
 
       const data = await api.json();
 
-      localStorage.setItem("vegetable", JSON.stringify(data.recipes));
-      setVegetable(data.recipes);
+      console.log("API RESPONSE:", data);
+
+      if (data.recipes) {
+        setVegetable(data.recipes);
+
+        localStorage.setItem("vegetable", JSON.stringify(data.recipes));
+      } else {
+        console.error("API returned no recipes");
+      }
+    } catch (err) {
+      console.error("FETCH ERROR:", err);
     }
   };
 

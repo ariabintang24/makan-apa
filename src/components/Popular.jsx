@@ -9,23 +9,48 @@ function Popular() {
   const [popular, setPopular] = useState([]);
 
   useEffect(() => {
+    console.log("API KEY:", process.env.REACT_APP_API_KEY);
+
     getPopular();
   }, []);
 
   const getPopular = async () => {
-    const check = localStorage.getItem("popular");
+    try {
+      const check = localStorage.getItem("popular");
 
-    if (check) {
-      setPopular(JSON.parse(check));
-    } else {
+      // FIX: validasi localStorage
+      if (check && check !== "undefined" && check !== "null") {
+        try {
+          const parsed = JSON.parse(check);
+
+          if (Array.isArray(parsed)) {
+            setPopular(parsed);
+            return;
+          }
+        } catch (err) {
+          console.log("localStorage corrupted, clearing...");
+          localStorage.removeItem("popular");
+        }
+      }
+
+      // Fetch dari API jika tidak ada cache valid
       const api = await fetch(
         `https://api.spoonacular.com/recipes/random?apiKey=${process.env.REACT_APP_API_KEY}&number=9`,
       );
 
       const data = await api.json();
 
-      localStorage.setItem("popular", JSON.stringify(data.recipes));
-      setPopular(data.recipes);
+      console.log("API RESPONSE:", data);
+
+      if (data.recipes) {
+        setPopular(data.recipes);
+
+        localStorage.setItem("popular", JSON.stringify(data.recipes));
+      } else {
+        console.error("API returned no recipes");
+      }
+    } catch (err) {
+      console.error("FETCH ERROR:", err);
     }
   };
 
