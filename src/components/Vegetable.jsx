@@ -9,8 +9,6 @@ function Vegetable() {
   const [vegetable, setVegetable] = useState([]);
 
   useEffect(() => {
-    console.log("API KEY:", process.env.REACT_APP_API_KEY);
-
     getVegetable();
   }, []);
 
@@ -18,7 +16,6 @@ function Vegetable() {
     try {
       const check = localStorage.getItem("vegetable");
 
-      // FIX: validasi localStorage
       if (check && check !== "undefined" && check !== "null") {
         try {
           const parsed = JSON.parse(check);
@@ -27,13 +24,11 @@ function Vegetable() {
             setVegetable(parsed);
             return;
           }
-        } catch (err) {
-          console.log("localStorage corrupted, clearing...");
+        } catch {
           localStorage.removeItem("vegetable");
         }
       }
 
-      // Fetch dari API jika cache tidak valid
       const api = await fetch(
         `https://api.spoonacular.com/recipes/random?apiKey=${process.env.REACT_APP_API_KEY}&number=9&tags=vegetarian`,
       );
@@ -42,15 +37,32 @@ function Vegetable() {
 
       console.log("API RESPONSE:", data);
 
-      if (data.recipes) {
+      if (data.recipes && Array.isArray(data.recipes)) {
         setVegetable(data.recipes);
 
         localStorage.setItem("vegetable", JSON.stringify(data.recipes));
       } else {
-        console.error("API returned no recipes");
+        console.warn("API limit reached or no recipes returned");
+
+        const oldCache = localStorage.getItem("vegetable");
+
+        if (oldCache && oldCache !== "undefined") {
+          try {
+            const parsed = JSON.parse(oldCache);
+
+            if (Array.isArray(parsed)) {
+              setVegetable(parsed);
+              return;
+            }
+          } catch {}
+        }
+
+        setVegetable([]);
       }
     } catch (err) {
       console.error("FETCH ERROR:", err);
+
+      setVegetable([]);
     }
   };
 
